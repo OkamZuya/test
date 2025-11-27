@@ -1,0 +1,81 @@
+name: Build Qt GUI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+env:
+  BUILD_TYPE: Release
+  QT_VERSION: 6.6.3
+
+jobs:
+  build:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Ninja (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build
+
+      - name: Install Ninja (Windows)
+        if: runner.os == 'Windows'
+        run: choco install ninja --yes --no-progress
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v3
+        with:
+          version: ${{ env.QT_VERSION }}
+          cache: true
+
+      - name: Configure & build (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          PREFIX_PATH="${Qt6_DIR:-${Qt5_DIR:-}}"
+          cmake -S . -B build-linux -G Ninja \
+            -DCMAKE_BUILD_TYPE="${BUILD_TYPE}" \
+            ${PREFIX_PATH:+-DCMAKE_PREFIX_PATH="${PREFIX_PATH}"}
+          cmake --build build-linux
+
+      - name: Configure & build (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $prefix = if ($env:Qt6_DIR) { $env:Qt6_DIR } elseif ($env:Qt5_DIR) { $env:Qt5_DIR } else { "" }
+          $cmakeArgs = @(
+            "-S", ".", "-B", "build-windows",
+            "-G", "Ninja",
+            "-DCMAKE_BUILD_TYPE=$env:BUILD_TYPE"
+          )
+          if ($prefix) {
+            $cmakeArgs += "-DCMAKE_PREFIX_PATH=$prefix"
+          }
+          cmake @cmakeArgs
+          cmake --build build-windows --config $env:BUILD_TYPE
+
+      - name: Upload artifact (Linux)
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: QtGuiSample-${{ matrix.os }}
+          path: build-linux/QtGuiSample
+
+      - name: Upload artifact (Windows)
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: QtGuiSample-${{ matrix.os }}
+          path: build-windows/QtGuiSample.exe
+
