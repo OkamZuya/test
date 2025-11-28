@@ -33,7 +33,16 @@ jobs:
         if: runner.os == 'Windows'
         run: choco install ninja --yes --no-progress
 
-      - name: Install Qt
+      - name: Install Qt (Windows)
+        if: runner.os == 'Windows'
+        uses: jurplel/install-qt-action@v3
+        with:
+          version: ${{ env.QT_VERSION }}
+          modules: mingw_64
+          cache: true
+      
+      - name: Install Qt (Linux)
+        if: runner.os == 'Linux'
         uses: jurplel/install-qt-action@v3
         with:
           version: ${{ env.QT_VERSION }}
