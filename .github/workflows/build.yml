@@ -39,7 +39,7 @@ jobs:
         with:
           version: ${{ env.QT_VERSION }}
           arch: win64_mingw
-          tools: tools_mingw1120
+          tools: tools_mingw1310_64
           cache: true
       - name: Setup MinGW toolchain (Windows)
         if: runner.os == 'Windows'
