@@ -39,7 +39,23 @@ jobs:
         with:
           version: ${{ env.QT_VERSION }}
           arch: win64_mingw
+          tools: tools_mingw1120
           cache: true
+      - name: Setup MinGW toolchain (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $toolsRoot = (Resolve-Path (Join-Path $env:Qt6_DIR "..\..\Tools")).Path
+          $mingwDir = Get-ChildItem -Path $toolsRoot -Directory -Filter "mingw*64" | Sort-Object Name -Descending | Select-Object -First 1
+          if (-not $mingwDir) {
+            throw "Could not locate MinGW toolchain under $toolsRoot"
+          }
+          $mingwBin = Join-Path $mingwDir.FullName "bin"
+          Write-Host "Using MinGW from $mingwBin"
+          Add-Content -Path $env:GITHUB_PATH -Value $mingwBin
+          "MINGW_C_COMPILER=$mingwBin\gcc.exe" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "MINGW_CXX_COMPILER=$mingwBin\g++.exe" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
       
       - name: Install Qt (Linux)
         if: runner.os == 'Linux'
@@ -70,6 +86,10 @@ jobs:
           )
           if ($prefix) {
             $cmakeArgs += "-DCMAKE_PREFIX_PATH=$prefix"
+          }
+          if ($env:MINGW_C_COMPILER -and $env:MINGW_CXX_COMPILER) {
+            $cmakeArgs += "-DCMAKE_C_COMPILER=$env:MINGW_C_COMPILER"
+            $cmakeArgs += "-DCMAKE_CXX_COMPILER=$env:MINGW_CXX_COMPILER"
           }
           cmake @cmakeArgs
           cmake --build build-windows --config $env:BUILD_TYPE
