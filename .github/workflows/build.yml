@@ -38,7 +38,7 @@ jobs:
         uses: jurplel/install-qt-action@v3
         with:
           version: ${{ env.QT_VERSION }}
-          modules: mingw_64
+          arch: win64_mingw
           cache: true
       
       - name: Install Qt (Linux)
